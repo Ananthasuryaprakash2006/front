@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Weather App</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: linear-gradient(to right, #00c6ff, #0072ff);
+      color: white;
+      text-align: center;
+      padding: 50px;
+    }
+    .container {
+      background: rgba(255, 255, 255, 0.1);
+      padding: 30px;
+      border-radius: 15px;
+      width: 320px;
+      margin: auto;
+      box-shadow: 0 0 10px rgba(0,0,0,0.3);
+    }
+    input {
+      padding: 10px;
+      width: 80%;
+      border: none;
+      border-radius: 5px;
+      box-sizing: border-box;
+    }
+    button {
+      padding: 10px;
+      margin-top: 10px;
+      background-color: #ff9800;
+      border: none;
+      border-radius: 5px;
+      color: white;
+      cursor: pointer;
+    }
+    button[disabled] {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+    button:hover:not([disabled]) {
+      background-color: #e68900;
+    }
+    img { width: 80px; }
+    .muted { opacity: 0.95; font-size: 0.95rem; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h2>🌤 Weather App</h2>
+    <input id="city" type="text" placeholder="Enter city name" aria-label="City name"/>
+    <br />
+    <button id="getBtn">Get Weather</button>
+    <div id="result" aria-live="polite" style="margin-top:12px;"></div>
+  </div>
+
+  <script>
+    // NOTE: For production, keep API keys on a server. This key is visible client-side.
+    const apiKey = "2961dea981ecbcf7f9b74f3a58f5dabe";
+    const cityInput = document.getElementById("city");
+    const getBtn = document.getElementById("getBtn");
+    const resultDiv = document.getElementById("result");
+
+    getBtn.addEventListener("click", getWeather);
+    cityInput.addEventListener("keyup", (e) => { if (e.key === "Enter") getWeather(); });
+
+    async function getWeather() {
+      const city = cityInput.value.trim();
+      if (!city) {
+        resultDiv.innerHTML = '<p>Please enter a city name!</p>';
+        return;
+      }
+
+      // UI: loading state
+      getBtn.disabled = true;
+      getBtn.textContent = "Loading...";
+      resultDiv.innerHTML = '<p class="muted">Fetching weather...</p>';
+
+      const url = `https://api.openweathermap.org/data/2.5/weather?q=${encodeURIComponent(city)}&appid=${apiKey}&units=metric`;
+
+      try {
+        const response = await fetch(url);
+        const data = await response.json();
+
+        if (!response.ok) {
+          // OpenWeather returns e.g. { cod: "404", message: "city not found" }
+          resultDiv.innerHTML = `<p>❌ ${escapeHtml(data.message || 'Unable to fetch weather')}</p>`;
+          return;
+        }
+
+        resultDiv.innerHTML = `
+          <h3>${escapeHtml(data.name)}, ${escapeHtml(data.sys.country)}</h3>
+          <p>🌡 Temperature: ${Math.round(data.main.temp)}°C</p>
+          <p>☁ Condition: ${escapeHtml(data.weather[0].description)}</p>
+          <p>💧 Humidity: ${data.main.humidity}%</p>
+          <p>🌬 Wind: ${data.wind.speed} m/s</p>
+          <img src="https://openweathermap.org/img/wn/${data.weather[0].icon}@2x.png" alt="weather icon" />
+        `;
+      } catch (err) {
+        console.error(err);
+        resultDiv.innerHTML = '<p>Error fetching weather data! Please check your connection.</p>';
+      } finally {
+        getBtn.disabled = false;
+        getBtn.textContent = "Get Weather";
+      }
+    }
+
+    // simple HTML escape to reduce risk of injecting user-provided strings
+    function escapeHtml(str) {
+      if (typeof str !== "string") return str;
+      return str.replace(/[&<>"']/g, (m) => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+      }[m]));
+    }
+  </script>
+</body>
+</html>
